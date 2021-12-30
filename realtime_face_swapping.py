@@ -127,31 +127,31 @@ while True:
 
         cv2.fillConvexPoly(cropped_tr2_mask, points2, 255)
 
+
+
         # Warp triangles
         points = np.float32(points)
         points2 = np.float32(points2)
         M = cv2.getAffineTransform(points, points2)
         warped_triangle = cv2.warpAffine(cropped_triangle, M, (w, h))
-        warped_triangle = cv2.bitwise_and(
-            warped_triangle, warped_triangle, mask=cropped_tr2_mask)
+        warped_triangle = cv2.bitwise_and(warped_triangle, warped_triangle, mask=cropped_tr2_mask)
+
 
         # Reconstructing destination face
         img2_new_face_rect_area = img2_new_face[y: y + h, x: x + w]
-        img2_new_face_rect_area_gray = cv2.cvtColor(
-            img2_new_face_rect_area, cv2.COLOR_BGR2GRAY)
-        _, mask_triangles_designed = cv2.threshold(
-            img2_new_face_rect_area_gray, 1, 255, cv2.THRESH_BINARY_INV)
-        warped_triangle = cv2.bitwise_and(
-            warped_triangle, warped_triangle, mask=mask_triangles_designed)
+        img2_new_face_rect_area_gray = cv2.cvtColor(img2_new_face_rect_area, cv2.COLOR_BGR2GRAY)
+        _, mask_triangles_designed = cv2.threshold(img2_new_face_rect_area_gray, 1, 255, cv2.THRESH_BINARY_INV)
+        warped_triangle = cv2.bitwise_and(warped_triangle, warped_triangle, mask=mask_triangles_designed)
 
-        img2_new_face_rect_area = cv2.add(
-            img2_new_face_rect_area, warped_triangle)
+        img2_new_face_rect_area = cv2.add(img2_new_face_rect_area, warped_triangle)
         img2_new_face[y: y + h, x: x + w] = img2_new_face_rect_area
+
 
     # Face swapped (putting 1st face into 2nd face)
     img2_face_mask = np.zeros_like(img2_gray)
     img2_head_mask = cv2.fillConvexPoly(img2_face_mask, convexhull2, 255)
     img2_face_mask = cv2.bitwise_not(img2_head_mask)
+
 
     img2_head_noface = cv2.bitwise_and(img2, img2, mask=img2_face_mask)
     result = cv2.add(img2_head_noface, img2_new_face)
@@ -159,13 +159,9 @@ while True:
     (x, y, w, h) = cv2.boundingRect(convexhull2)
     center_face2 = (int((x + x + w) / 2), int((y + y + h) / 2))
 
-    seamlessclone = cv2.seamlessClone(
-        result, img2, img2_head_mask, center_face2, cv2.MIXED_CLONE)
+    seamlessclone = cv2.seamlessClone(result, img2, img2_head_mask, center_face2, cv2.MIXED_CLONE)
 
-    cv2.resize(seamlessclone, (1600, 900))
-    # cv2.imshow("img2", img2)
     cv2.imshow("clone", seamlessclone)
-    # cv2.imshow("result", result)
 
     key = cv2.waitKey(1)
     if key == 27:
