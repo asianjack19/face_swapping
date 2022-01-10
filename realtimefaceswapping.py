@@ -12,7 +12,7 @@ def extract_index_nparray(nparray):
     return index
 
 
-img = cv2.imread("bully.jpg")
+img = cv2.imread("faces/shaq.jpg")
 img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 mask = np.zeros_like(img_gray)
 
@@ -77,14 +77,14 @@ while True:
     # Face 2
     faces2 = detector(img2_gray)
     for face in faces2:
-        landmarks = predictor(img2_gray, face)
         landmarks_points2 = []
+        landmarks = predictor(img2_gray, face)
         for n in range(0, 68):
             x = landmarks.part(n).x
             y = landmarks.part(n).y
             landmarks_points2.append((x, y))
 
-        # cv2.circle(img2, (x, y), 3, (0, 255, 0), -1)
+            # cv2.circle(img2, (x, y), 1, (255, 255, 255), -1, cv2.LINE_AA)
         points2 = np.array(landmarks_points2, np.int32)
         convexhull2 = cv2.convexHull(points2)
 
@@ -127,31 +127,33 @@ while True:
 
         cv2.fillConvexPoly(cropped_tr2_mask, points2, 255)
 
-
-
         # Warp triangles
         points = np.float32(points)
         points2 = np.float32(points2)
         M = cv2.getAffineTransform(points, points2)
         warped_triangle = cv2.warpAffine(cropped_triangle, M, (w, h))
-        warped_triangle = cv2.bitwise_and(warped_triangle, warped_triangle, mask=cropped_tr2_mask)
-
+        warped_triangle = cv2.bitwise_and(
+            warped_triangle, warped_triangle, mask=cropped_tr2_mask)
 
         # Reconstructing destination face
         img2_new_face_rect_area = img2_new_face[y: y + h, x: x + w]
-        img2_new_face_rect_area_gray = cv2.cvtColor(img2_new_face_rect_area, cv2.COLOR_BGR2GRAY)
-        _, mask_triangles_designed = cv2.threshold(img2_new_face_rect_area_gray, 1, 255, cv2.THRESH_BINARY_INV)
-        warped_triangle = cv2.bitwise_and(warped_triangle, warped_triangle, mask=mask_triangles_designed)
+        img2_new_face_rect_area_gray = cv2.cvtColor(
+            img2_new_face_rect_area, cv2.COLOR_BGR2GRAY)
+        _, mask_triangles_designed = cv2.threshold(
+            img2_new_face_rect_area_gray, 20, 255, cv2.THRESH_BINARY_INV)
+        warped_triangle = cv2.bitwise_and(
+            warped_triangle, warped_triangle, mask=mask_triangles_designed)
 
-        img2_new_face_rect_area = cv2.add(img2_new_face_rect_area, warped_triangle)
+        img2_new_face_rect_area = cv2.add(
+            img2_new_face_rect_area, warped_triangle)
+        # img2_new_face_rect_area = cv2.GaussianBlur(img2_new_face_rect_area, (3, 3), 101)
+        img2_new_face_rect_area = cv2.medianBlur(img2_new_face_rect_area, 3)
         img2_new_face[y: y + h, x: x + w] = img2_new_face_rect_area
-
 
     # Face swapped (putting 1st face into 2nd face)
     img2_face_mask = np.zeros_like(img2_gray)
     img2_head_mask = cv2.fillConvexPoly(img2_face_mask, convexhull2, 255)
     img2_face_mask = cv2.bitwise_not(img2_head_mask)
-
 
     img2_head_noface = cv2.bitwise_and(img2, img2, mask=img2_face_mask)
     result = cv2.add(img2_head_noface, img2_new_face)
@@ -159,9 +161,18 @@ while True:
     (x, y, w, h) = cv2.boundingRect(convexhull2)
     center_face2 = (int((x + x + w) / 2), int((y + y + h) / 2))
 
-    seamlessclone = cv2.seamlessClone(result, img2, img2_head_mask, center_face2, cv2.MIXED_CLONE)
+    seamlessclone = cv2.seamlessClone(
+        result, img2, img2_head_mask, center_face2, cv2.MIXED_CLONE)
 
-    cv2.imshow("clone", seamlessclone)
+    # create kernel to sharpen image with small effect
+    kernel = np.array([[0, -1, 0],
+                       [-1, 5, -1],
+                       [0, -1, 0]])
+    seamlessclone = cv2.filter2D(seamlessclone, -1, kernel)
+
+    cv2.namedWindow('Face Swapped', cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('Face Swapped', 1600, 950)
+    cv2.imshow('Face Swapped', seamlessclone)
 
     key = cv2.waitKey(1)
     if key == 27:
